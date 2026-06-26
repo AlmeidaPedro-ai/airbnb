@@ -14,6 +14,7 @@ class Settings:
     jwt_secret: str
     env: str
     tz: str
+    frontend_dist: str
 
     @property
     def is_dev(self) -> bool:
@@ -41,4 +42,6 @@ def get_settings() -> Settings:
         jwt_secret=os.getenv("JWT_SECRET", "dev-insecure-secret-change-me"),
         env=os.getenv("ENV", "dev"),
         tz=os.getenv("TZ", "America/Sao_Paulo"),
+        # Diretório do build do frontend a ser servido pela API (vazio = não servir).
+        frontend_dist=os.getenv("FRONTEND_DIST", ""),
     )

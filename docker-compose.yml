@@ -1,5 +1,5 @@
-# Postgres local para desenvolvimento. O backend roda fora do compose nesta
-# fase (uvicorn local); nas próximas fases adicionamos o serviço da API.
+# Stack completa local: Postgres + API (que serve também o frontend buildado).
+# Reproduz o ambiente do Railway (imagem única servindo /api + estáticos).
 services:
   db:
     image: postgres:16
@@ -17,6 +17,23 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@db:5432/airbnb
+      JWT_SECRET: troque-este-segredo-em-producao
+      ENV: dev
+      TZ: America/Sao_Paulo
+      # Popula o dataset de exemplo na primeira subida (idempotente).
+      SEED_ON_START: "true"
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
 
 volumes:
   pgdata:

@@ -5,10 +5,10 @@ Aplicação para gerenciar a locação de temporada de 2–3 apartamentos: métr
 despesas por categoria, lucro) e **tributárias** (estimativa de IR via
 Carnê-Leão), por apartamento e por período.
 
-> **Estado atual: Fase 4 (Importação/Exportação) concluída.** Backend e frontend
-> completos, incluindo **importação de reservas via CSV** (mapeamento de colunas,
-> de-para de anúncios e dry-run) e **exportação CSV/Excel** de reservas, despesas
-> e grade de imposto. Falta apenas o deploy (Fase 5).
+> **Estado atual: todas as fases (1–5) concluídas.** Backend + frontend
+> completos, com importação/exportação CSV e **deploy no Railway** (Dockerfile
+> único servindo API + frontend, Postgres gerenciado, migrações no start e
+> healthcheck).
 
 ## Stack
 
@@ -183,10 +183,44 @@ interpolação linear (marcada com `# TODO: confirmar fórmula do redutor 2026 c
 contador/Receita`). Defina qual comportamento é o correto fiscalmente e eu ajusto
 o default.
 
+## Deploy (Railway)
+
+Imagem Docker **única** (`Dockerfile` na raiz): o estágio 1 builda o frontend
+(Vite) e o estágio 2 (Python 3.12) instala o backend e serve a API **e** o build
+estático do frontend na mesma origem — assim o `/api` funciona sem CORS/proxy e
+há um só serviço para gerenciar.
+
+### Passos no Railway
+
+1. **New Project → Deploy from GitHub repo** (ou `railway up`). O Railway detecta
+   o `Dockerfile`/`railway.json` automaticamente.
+2. **Add → Database → PostgreSQL** (plugin gerenciado). Ele injeta `DATABASE_URL`
+   no serviço — o app normaliza `postgres://` para `postgresql+psycopg://`.
+3. **Variables** do serviço da API:
+   - `JWT_SECRET` — segredo forte (obrigatório em produção).
+   - `ENV=production`
+   - `TZ=America/Sao_Paulo`
+   - `SEED_ON_START=true` **apenas na primeira subida** (popula o dataset de
+     exemplo; é idempotente). Depois remova ou deixe `false`.
+   - `SEED_USER_EMAIL` / `SEED_USER_PASSWORD` para criar o usuário inicial.
+4. O **start** (`backend/start.sh`) roda `alembic upgrade head` e sobe o
+   gunicorn (workers uvicorn) na porta `$PORT` do Railway.
+5. **Healthcheck:** `railway.json` aponta para `/api/health`.
+
+### Rodar a stack completa localmente (como no Railway)
+
+```bash
+docker compose up --build
+# API + frontend: http://localhost:8000   (SEED_ON_START=true popula o exemplo)
+```
+
+> Variáveis: `DATABASE_URL`, `JWT_SECRET`, `ENV`, `TZ` (+ `SEED_ON_START`,
+> `WEB_CONCURRENCY`). Ver `backend/.env.example`.
+
 ## Roadmap
 
 - [x] **Fase 1 — Esqueleto:** modelos, migrações, seed, cálculo + testes.
 - [x] **Fase 2 — API:** endpoints REST, autenticação JWT, OpenAPI.
 - [x] **Fase 3 — Frontend:** dashboard, gráficos, CRUDs.
 - [x] **Fase 4 — Importação/Exportação CSV.**
-- [ ] **Fase 5 — Deploy Railway:** Dockerfile, env, migrações no start.
+- [x] **Fase 5 — Deploy Railway:** Dockerfile, env, migrações no start, healthcheck.

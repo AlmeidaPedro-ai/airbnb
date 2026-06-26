@@ -4,9 +4,12 @@ Importação/exportação CSV chegam na Fase 4; frontend na Fase 3.
 """
 from __future__ import annotations
 
+import os
+
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings
 from app.routers import (
@@ -69,3 +72,15 @@ for r in (
     exportacao.router,
 ):
     app.include_router(r)
+
+
+# Serve o build do frontend (SPA) na mesma origem da API, se configurado.
+# Registrado por último para não sombrear /api, /docs nem /openapi.json.
+# O frontend usa HashRouter, então basta servir index.html na raiz.
+if settings.frontend_dist and os.path.isdir(settings.frontend_dist):
+    app.mount(
+        "/",
+        StaticFiles(directory=settings.frontend_dist, html=True),
+        name="frontend",
+    )
+
