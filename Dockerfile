@@ -2,11 +2,13 @@
 # Estágio 1 — build do frontend (React + Vite)                                 #
 # ---------------------------------------------------------------------------- #
 FROM node:22-slim AS frontend
-WORKDIR /fe
+WORKDIR /build
+# Dependências primeiro (camada cacheável) e depois o restante do código.
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
-COPY frontend/ ./
-RUN npm run build
+COPY frontend/index.html frontend/tsconfig.json frontend/tsconfig.node.json frontend/vite.config.ts ./
+COPY frontend/src ./src
+RUN npm run build && ls -la dist
 
 # ---------------------------------------------------------------------------- #
 # Estágio 2 — backend (FastAPI) servindo a API + o build estático do frontend  #
@@ -30,7 +32,7 @@ COPY backend/requirements.txt ./
 RUN pip install -r requirements.txt
 
 COPY backend/ ./
-COPY --from=frontend /fe/dist ./static
+COPY --from=frontend /build/dist ./static
 RUN chmod +x /app/start.sh
 
 EXPOSE 8000
