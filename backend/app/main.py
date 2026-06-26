@@ -13,6 +13,8 @@ from app.routers import (
     apartamentos,
     auth,
     despesas,
+    exportacao,
+    importacao,
     imposto,
     metricas,
     parametros_ir,
@@ -63,5 +65,7 @@ for r in (
     metricas.router,
     imposto.router,
     parametros_ir.router,
+    importacao.router,
+    exportacao.router,
 ):
     app.include_router(r)

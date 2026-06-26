@@ -5,6 +5,7 @@ Se o banco não estiver acessível, o módulo é ignorado (skip).
 """
 from __future__ import annotations
 
+import json
 import os
 
 import pytest
@@ -248,6 +249,126 @@ def test_reserva_avisos_capacidade_e_sobreposicao(client, auth):
         assert client.delete(f"/api/reservas/{res1_id}", headers=auth).status_code == 204
     finally:
         client.delete(f"/api/apartamentos/{apto_id}", headers=auth)
+
+
+def test_importacao_reservas_fluxo(client, auth):
+    # Apartamento inativo dedicado para não afetar métricas; com reservas
+    # importadas em datas futuras (fora dos testes de aceite).
+    r = client.post(
+        "/api/apartamentos",
+        json={
+            "nome": "Import Teste 997",
+            "quartos": 1,
+            "capacidade": 4,
+            "data_inicio_operacao": "2026-01-01",
+            "ativo": False,
+        },
+        headers=auth,
+    )
+    apto_id = r.json()["id"]
+    csv_texto = (
+        "Confirmation code,Listing,Start date,End date,# of guests,Earnings\n"
+        "HMQA01,Import Teste,08/08/2026,12/08/2026,2,\"1.200,00\"\n"
+        "HMQA02,Import Teste,15/08/2026,18/08/2026,3,\"900,00\"\n"
+        "HMQA01,Import Teste,20/08/2026,22/08/2026,2,\"600,00\"\n"  # duplicada
+    )
+    arquivo = ("reservas.csv", csv_texto, "text/csv")
+    try:
+        # 1. Analisar
+        r = client.post(
+            "/api/importar/reservas/analisar",
+            files={"arquivo": arquivo},
+            headers=auth,
+        )
+        assert r.status_code == 200, r.text
+        analise = r.json()
+        assert analise["sugestao_mapeamento"]["check_in"] == "Start date"
+        assert analise["listings"] == ["Import Teste"]
+        assert analise["total_linhas"] == 3
+
+        mapeamento = json.dumps(analise["sugestao_mapeamento"])
+        de_para = json.dumps({"Import Teste": apto_id})
+
+        # 2. Dry-run
+        r = client.post(
+            "/api/importar/reservas/confirmar",
+            files={"arquivo": arquivo},
+            data={"mapeamento": mapeamento, "de_para": de_para, "dry_run": "true"},
+            headers=auth,
+        )
+        assert r.status_code == 200, r.text
+        previa = r.json()
+        assert previa["criar"] == 2
+        assert previa["ignorar"] == 1  # código duplicado
+        assert previa["importadas"] == 0
+
+        # 3. Importar de fato
+        r = client.post(
+            "/api/importar/reservas/confirmar",
+            files={"arquivo": arquivo},
+            data={"mapeamento": mapeamento, "de_para": de_para, "dry_run": "false"},
+            headers=auth,
+        )
+        assert r.json()["importadas"] == 2
+
+        # 4. Reimportar -> tudo deduplicado (0 criadas)
+        r = client.post(
+            "/api/importar/reservas/confirmar",
+            files={"arquivo": arquivo},
+            data={"mapeamento": mapeamento, "de_para": de_para, "dry_run": "false"},
+            headers=auth,
+        )
+        assert r.json()["importadas"] == 0
+        assert r.json()["criar"] == 0
+    finally:
+        # Limpa as reservas importadas e o apartamento.
+        reservas = client.get(
+            "/api/reservas", params={"apartamento_id": apto_id}, headers=auth
+        ).json()
+        for rv in reservas:
+            client.delete(f"/api/reservas/{rv['id']}", headers=auth)
+        client.delete(f"/api/apartamentos/{apto_id}", headers=auth)
+
+
+def test_exportacao_reservas_csv(client, auth):
+    r = client.get(
+        "/api/exportar/reservas",
+        params={"formato": "csv", "inicio": "2026-01-01", "fim": "2026-03-31"},
+        headers=auth,
+    )
+    assert r.status_code == 200
+    assert "text/csv" in r.headers["content-type"]
+    assert "attachment" in r.headers["content-disposition"]
+    texto = r.content.decode("utf-8-sig")
+    assert "Apartamento" in texto.splitlines()[0]
+    assert "Copacabana 302" in texto
+
+
+def test_exportacao_imposto_xlsx(client, auth):
+    from openpyxl import load_workbook
+    import io as _io
+
+    r = client.get(
+        "/api/exportar/imposto",
+        params={"formato": "xlsx", "ano": 2026},
+        headers=auth,
+    )
+    assert r.status_code == 200
+    assert "spreadsheetml" in r.headers["content-type"]
+    wb = load_workbook(_io.BytesIO(r.content))
+    ws = wb.active
+    assert ws.cell(row=1, column=1).value == "Mês"
+    # Última linha = total devido 1541.00
+    ultima = ws.max_row
+    assert ws.cell(row=ultima, column=1).value == "Total"
+    assert float(ws.cell(row=ultima, column=10).value) == 1541.0
+
+
+def test_exportacao_formato_invalido(client, auth):
+    r = client.get(
+        "/api/exportar/reservas", params={"formato": "pdf"}, headers=auth
+    )
+    assert r.status_code == 400
 
 
 def test_despesa_crud(client, auth):

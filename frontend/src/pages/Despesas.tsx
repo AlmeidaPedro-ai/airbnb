@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { api } from "../api/client";
+import { api, baixar } from "../api/client";
 import Modal from "../components/Modal";
 import { nomeApartamento, useApartamentos } from "../components/useApartamentos";
 import {
@@ -109,9 +109,29 @@ export default function Despesas() {
     <div>
       <div className="page-head">
         <h2>Despesas</h2>
-        <button className="btn btn-primario" onClick={abrirNova}>
-          + Nova despesa
-        </button>
+        <div className="head-acoes">
+          {(["xlsx", "csv"] as const).map((fmt) => (
+            <button
+              key={fmt}
+              className="btn btn-sec"
+              onClick={() =>
+                baixar("/exportar/despesas", {
+                  formato: fmt,
+                  apartamento_id:
+                    fApto === "" || fApto === "comum" ? undefined : fApto,
+                  categoria: fCat || undefined,
+                  inicio: fInicio || undefined,
+                  fim: fFim || undefined,
+                })
+              }
+            >
+              Exportar {fmt === "xlsx" ? "Excel" : "CSV"}
+            </button>
+          ))}
+          <button className="btn btn-primario" onClick={abrirNova}>
+            + Nova despesa
+          </button>
+        </div>
       </div>
 
       <div className="filtros">

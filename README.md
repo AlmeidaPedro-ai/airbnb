@@ -5,10 +5,10 @@ Aplicação para gerenciar a locação de temporada de 2–3 apartamentos: métr
 despesas por categoria, lucro) e **tributárias** (estimativa de IR via
 Carnê-Leão), por apartamento e por período.
 
-> **Estado atual: Fase 3 (Frontend) concluída.** Backend completo (modelos,
-> migrações, seed, cálculo testado, API REST + JWT) **e frontend React + Vite +
-> TypeScript com dashboard, gráficos (Recharts) e CRUDs**. Importação/exportação
-> CSV e deploy chegam nas fases seguintes.
+> **Estado atual: Fase 4 (Importação/Exportação) concluída.** Backend e frontend
+> completos, incluindo **importação de reservas via CSV** (mapeamento de colunas,
+> de-para de anúncios e dry-run) e **exportação CSV/Excel** de reservas, despesas
+> e grade de imposto. Falta apenas o deploy (Fase 5).
 
 ## Stack
 
@@ -75,8 +75,10 @@ npm run build    # type-check (tsc) + bundle de produção em dist/
 Telas: **Dashboard** (filtros de apê/período com atalhos, 12 KPIs, gráficos de
 ocupação, receita × despesas por mês e despesas por categoria, resumo por
 apartamento), **Reservas/Despesas/Apartamentos** (CRUD com avisos de
-capacidade/sobreposição), **Imposto** (grade mensal com "outras rendas"
-editáveis e recálculo) e **Parâmetros IR** (edição de faixas e isenção).
+capacidade/sobreposição e botões de exportação CSV/Excel), **Imposto** (grade
+mensal com "outras rendas" editáveis, recálculo e exportação), **Importar CSV**
+(upload → mapeamento de colunas → de-para de anúncios → dry-run → importação) e
+**Parâmetros IR** (edição de faixas e isenção).
 
 > Login com as credenciais de seed (abaixo). O backend precisa estar rodando.
 
@@ -99,7 +101,11 @@ e `GET /api/health`.
 | GET | `/api/metricas` | KPIs (`apartamento_id`,`inicio`,`fim`) |
 | GET | `/api/metricas/por-apartamento` | KPIs por apê (`inicio`,`fim`) |
 | GET | `/api/imposto?ano=` | Grade mensal + total anual |
+| POST | `/api/imposto/calcular` | Recalcula a grade com "outras rendas" |
 | GET/PUT | `/api/parametros-ir` | Ler/editar faixas e isenção |
+| POST | `/api/importar/reservas/analisar` | Lê o CSV → colunas, mapeamento sugerido, anúncios |
+| POST | `/api/importar/reservas/confirmar` | Dry-run ou importação efetiva |
+| GET | `/api/exportar/{reservas\|despesas\|imposto}` | Exporta `formato=csv\|xlsx` |
 
 **Credenciais de seed (dev):** email `1994.pedro@gmail.com`, senha `admin123`
 (configuráveis via `SEED_USER_EMAIL` / `SEED_USER_PASSWORD` antes do seed).
@@ -182,5 +188,5 @@ o default.
 - [x] **Fase 1 — Esqueleto:** modelos, migrações, seed, cálculo + testes.
 - [x] **Fase 2 — API:** endpoints REST, autenticação JWT, OpenAPI.
 - [x] **Fase 3 — Frontend:** dashboard, gráficos, CRUDs.
-- [ ] **Fase 4 — Importação/Exportação CSV.**
+- [x] **Fase 4 — Importação/Exportação CSV.**
 - [ ] **Fase 5 — Deploy Railway:** Dockerfile, env, migrações no start.

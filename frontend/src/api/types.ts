@@ -178,3 +178,49 @@ export interface ParametrosIR {
   aplicar_redutor_transicao: boolean;
   faixas: FaixaIR[];
 }
+
+export interface ImportAnalise {
+  colunas: string[];
+  campos: string[];
+  obrigatorios: string[];
+  sugestao_mapeamento: Record<string, string | null>;
+  listings: string[];
+  amostra: Record<string, string>[];
+  total_linhas: number;
+}
+
+export interface LinhaImportada {
+  indice: number;
+  acao: "criar" | "ignorar" | "erro";
+  motivo: string | null;
+  listing: string | null;
+  codigo_confirmacao: string | null;
+  apartamento_id: number | null;
+  check_in: string | null;
+  check_out: string | null;
+  num_hospedes: number | null;
+  valor_hospedagem: number | null;
+}
+
+export interface PreviaImportacao {
+  dry_run: boolean;
+  total: number;
+  criar: number;
+  ignorar: number;
+  erro: number;
+  importadas: number;
+  linhas: LinhaImportada[];
+}
+
+// Rótulos amigáveis dos campos de destino da importação.
+export const ROTULO_CAMPO: Record<string, string> = {
+  codigo_confirmacao: "Código de confirmação",
+  listing: "Anúncio (listing)",
+  check_in: "Check-in",
+  check_out: "Check-out",
+  num_hospedes: "Nº de hóspedes",
+  valor_hospedagem: "Valor hospedagem",
+  taxa_limpeza: "Taxa de limpeza",
+  comissao: "Comissão",
+  status: "Status",
+};

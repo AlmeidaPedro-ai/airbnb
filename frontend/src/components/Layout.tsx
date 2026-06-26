@@ -7,6 +7,7 @@ const LINKS = [
   { to: "/despesas", label: "Despesas", end: false },
   { to: "/apartamentos", label: "Apartamentos", end: false },
   { to: "/imposto", label: "Imposto", end: false },
+  { to: "/importar", label: "Importar CSV", end: false },
   { to: "/parametros-ir", label: "Parâmetros IR", end: false },
 ];
 

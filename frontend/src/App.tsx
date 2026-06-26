@@ -8,6 +8,7 @@ import Despesas from "./pages/Despesas";
 import Apartamentos from "./pages/Apartamentos";
 import Imposto from "./pages/Imposto";
 import ParametrosIR from "./pages/ParametrosIR";
+import Importacao from "./pages/Importacao";
 import type { ReactNode } from "react";
 
 function Protegida({ children }: { children: ReactNode }) {
@@ -32,6 +33,7 @@ export default function App() {
         <Route path="/apartamentos" element={<Apartamentos />} />
         <Route path="/imposto" element={<Imposto />} />
         <Route path="/parametros-ir" element={<ParametrosIR />} />
+        <Route path="/importar" element={<Importacao />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

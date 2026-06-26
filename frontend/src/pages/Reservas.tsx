@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { api } from "../api/client";
+import { api, baixar } from "../api/client";
 import Modal from "../components/Modal";
 import { nomeApartamento, useApartamentos } from "../components/useApartamentos";
 import {
@@ -116,9 +116,37 @@ export default function Reservas() {
     <div>
       <div className="page-head">
         <h2>Reservas</h2>
-        <button className="btn btn-primario" onClick={abrirNova}>
-          + Nova reserva
-        </button>
+        <div className="head-acoes">
+          <button
+            className="btn btn-sec"
+            onClick={() =>
+              baixar("/exportar/reservas", {
+                formato: "xlsx",
+                apartamento_id: fApto === "" ? undefined : fApto,
+                inicio: fInicio || undefined,
+                fim: fFim || undefined,
+              })
+            }
+          >
+            Exportar Excel
+          </button>
+          <button
+            className="btn btn-sec"
+            onClick={() =>
+              baixar("/exportar/reservas", {
+                formato: "csv",
+                apartamento_id: fApto === "" ? undefined : fApto,
+                inicio: fInicio || undefined,
+                fim: fFim || undefined,
+              })
+            }
+          >
+            Exportar CSV
+          </button>
+          <button className="btn btn-primario" onClick={abrirNova}>
+            + Nova reserva
+          </button>
+        </div>
       </div>
 
       <div className="filtros">

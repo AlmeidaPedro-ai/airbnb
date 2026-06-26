@@ -364,6 +364,59 @@ class ParametrosIROut(BaseModel):
     faixas: list[FaixaIROut]
 
 
+# --------------------------------------------------------------------------- #
+# Importação de reservas (CSV)                                                 #
+# --------------------------------------------------------------------------- #
+class ImportarAnaliseOut(BaseModel):
+    colunas: list[str]
+    campos: list[str]
+    obrigatorios: list[str]
+    sugestao_mapeamento: dict[str, str | None]
+    listings: list[str]
+    amostra: list[dict[str, str]]
+    total_linhas: int
+
+
+class LinhaImportadaOut(BaseModel):
+    indice: int
+    acao: str
+    motivo: str | None = None
+    listing: str | None = None
+    codigo_confirmacao: str | None = None
+    apartamento_id: int | None = None
+    check_in: date | None = None
+    check_out: date | None = None
+    num_hospedes: int | None = None
+    valor_hospedagem: float | None = None
+
+    @classmethod
+    def from_dataclass(cls, l) -> "LinhaImportadaOut":
+        return cls(
+            indice=l.indice,
+            acao=l.acao,
+            motivo=l.motivo,
+            listing=l.listing,
+            codigo_confirmacao=l.codigo_confirmacao,
+            apartamento_id=l.apartamento_id,
+            check_in=l.check_in,
+            check_out=l.check_out,
+            num_hospedes=l.num_hospedes,
+            valor_hospedagem=(
+                float(l.valor_hospedagem) if l.valor_hospedagem is not None else None
+            ),
+        )
+
+
+class PreviaImportacaoOut(BaseModel):
+    dry_run: bool
+    total: int
+    criar: int
+    ignorar: int
+    erro: int
+    importadas: int
+    linhas: list[LinhaImportadaOut]
+
+
 class ParametrosIRUpdate(BaseModel):
     isencao_efetiva: Decimal | None = Field(
         default=None, ge=0, max_digits=12, decimal_places=2

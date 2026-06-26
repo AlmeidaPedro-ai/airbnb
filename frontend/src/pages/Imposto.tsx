@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { api } from "../api/client";
+import { api, baixar } from "../api/client";
 import type { GradeImposto } from "../api/types";
 import { moeda, nomeMes, percent } from "../utils/format";
 
@@ -61,17 +61,18 @@ export default function Imposto() {
               ))}
             </select>
           </label>
-          <a
+          <button
             className="btn btn-sec"
-            href={`/api/exportar/imposto?formato=xlsx&ano=${ano}`}
-            title="Disponível na Fase 4"
-            onClick={(e) => {
-              e.preventDefault();
-              alert("Exportação chega na Fase 4.");
-            }}
+            onClick={() => baixar("/exportar/imposto", { formato: "xlsx", ano })}
           >
-            Exportar
-          </a>
+            Exportar Excel
+          </button>
+          <button
+            className="btn btn-sec"
+            onClick={() => baixar("/exportar/imposto", { formato: "csv", ano })}
+          >
+            Exportar CSV
+          </button>
         </div>
       </div>
 
