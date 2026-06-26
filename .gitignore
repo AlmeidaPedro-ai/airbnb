@@ -16,10 +16,14 @@ venv/
 *.sqlite3
 pgdata/
 
-# Node / frontend (fases futuras)
+# Node / frontend
 node_modules/
 dist/
 .vite/
+*.tsbuildinfo
+# artefatos do tsc -b (composite) na raiz do frontend
+frontend/vite.config.js
+frontend/vite.config.d.ts
 
 # Sistema
 .DS_Store

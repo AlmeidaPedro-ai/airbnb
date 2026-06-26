@@ -113,6 +113,35 @@ def test_imposto_aceite(client, auth):
     assert "contador" in g["disclaimer"]
 
 
+def test_metricas_mensal(client, auth):
+    resp = client.get(
+        "/api/metricas/mensal",
+        params={"inicio": "2026-01-01", "fim": "2026-03-31"},
+        headers=auth,
+    )
+    assert resp.status_code == 200, resp.text
+    serie = resp.json()
+    assert [m["rotulo"] for m in serie] == ["01/2026", "02/2026", "03/2026"]
+    assert serie[0]["receita_diarias"] == 7600.0
+    assert serie[0]["imposto_estimado"] == 685.25
+    assert serie[2]["imposto_estimado"] == 0.0
+
+
+def test_imposto_calcular_outras_rendas(client, auth):
+    resp = client.post(
+        "/api/imposto/calcular",
+        json={"ano": 2026, "outras_rendas": {"3": 2000}},
+        headers=auth,
+    )
+    assert resp.status_code == 200, resp.text
+    g = resp.json()
+    mar = g["linhas"][2]
+    # Mar: base 4305 + 2000 = 6305 -> 6305*0.275 - 896 = 837.88
+    assert mar["base"] == 6305.0
+    assert mar["imposto_devido"] == 837.88
+    assert g["total_devido"] == 2378.88
+
+
 def test_metricas_periodo_invalido(client, auth):
     resp = client.get(
         "/api/metricas",

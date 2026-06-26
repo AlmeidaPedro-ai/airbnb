@@ -1,6 +1,7 @@
 """Endpoints de métricas operacionais/financeiras."""
 from __future__ import annotations
 
+from calendar import monthrange
 from datetime import date
 from decimal import Decimal
 
@@ -10,7 +11,7 @@ from sqlalchemy import select
 from app.business import apartamentos_ativos, get_parametros_ir
 from app.deps import CurrentUser, DbSession
 from app.models import Despesa, Reserva
-from app.schemas import MetricasApartamentoOut, MetricasOut
+from app.schemas import MetricaMensalOut, MetricasApartamentoOut, MetricasOut
 from app.services.adapters import (
     apartamento_para_dominio,
     despesa_para_dominio,
@@ -31,6 +32,28 @@ def _valida_periodo(inicio: date, fim: date) -> None:
         )
 
 
+def _carregar(db, apartamento_id: int | None):
+    """Carrega reservas/despesas/params do escopo e o nº de apês considerados.
+
+    Filtro por apê: só as despesas daquele apê (sem as comuns); Todos: todas as
+    despesas (incluindo comuns) e nº de apês ativos.
+    """
+    reservas_stmt = select(Reserva)
+    despesas_stmt = select(Despesa)
+    if apartamento_id is not None:
+        reservas_stmt = reservas_stmt.where(Reserva.apartamento_id == apartamento_id)
+        despesas_stmt = despesas_stmt.where(Despesa.apartamento_id == apartamento_id)
+        num_apartamentos = 1
+    else:
+        num_apartamentos = len(apartamentos_ativos(db))
+
+    reservas = [reserva_para_dominio(r) for r in db.scalars(reservas_stmt).all()]
+    despesas = [despesa_para_dominio(d) for d in db.scalars(despesas_stmt).all()]
+    params_orm = get_parametros_ir(db, date.today().year)
+    params = parametros_ir_para_dominio(params_orm) if params_orm else None
+    return reservas, despesas, num_apartamentos, params
+
+
 @router.get("", response_model=MetricasOut)
 def metricas(
     db: DbSession,
@@ -47,39 +70,72 @@ def metricas(
     CPF; um apê = estimativa daquele apê isoladamente).
     """
     _valida_periodo(inicio, fim)
-
-    reservas_stmt = select(Reserva)
-    despesas_stmt = select(Despesa)
-
-    if apartamento_id is not None:
-        reservas_stmt = reservas_stmt.where(
-            Reserva.apartamento_id == apartamento_id
-        )
-        # Filtro por apê: só despesas daquele apê (sem as comuns).
-        despesas_stmt = despesas_stmt.where(
-            Despesa.apartamento_id == apartamento_id
-        )
-        num_apartamentos = 1
-    else:
-        num_apartamentos = len(apartamentos_ativos(db))
-
-    reservas = [reserva_para_dominio(r) for r in db.scalars(reservas_stmt).all()]
-    despesas = [despesa_para_dominio(d) for d in db.scalars(despesas_stmt).all()]
-
+    reservas, despesas, num, params = _carregar(db, apartamento_id)
+    params = params if params else None
+    # Para o imposto do período, usa os parâmetros do ano do início.
     params_orm = get_parametros_ir(db, inicio.year)
     imposto = (
         imposto_no_periodo(
-            reservas, despesas, inicio, fim,
-            parametros_ir_para_dominio(params_orm),
+            reservas, despesas, inicio, fim, parametros_ir_para_dominio(params_orm)
         )
         if params_orm is not None
-        else None
+        else Decimal("0")
     )
     resultado = calcular_metricas(
-        reservas, despesas, inicio, fim, num_apartamentos,
-        imposto_estimado=imposto if imposto is not None else Decimal("0"),
+        reservas, despesas, inicio, fim, num, imposto_estimado=imposto
     )
     return MetricasOut.from_dataclass(resultado)
+
+
+@router.get("/mensal", response_model=list[MetricaMensalOut])
+def mensal(
+    db: DbSession,
+    _: CurrentUser,
+    inicio: date,
+    fim: date,
+    apartamento_id: int | None = None,
+) -> list[MetricaMensalOut]:
+    """Série mensal (receita × despesas × imposto) para gráficos.
+
+    Cada mês usa a interseção do mês com ``[inicio, fim]``.
+    """
+    _valida_periodo(inicio, fim)
+    reservas, despesas, num, _params = _carregar(db, apartamento_id)
+
+    serie: list[MetricaMensalOut] = []
+    ano, mes = inicio.year, inicio.month
+    while (ano, mes) <= (fim.year, fim.month):
+        ini_mes = max(inicio, date(ano, mes, 1))
+        fim_mes = min(fim, date(ano, mes, monthrange(ano, mes)[1]))
+        params_orm = get_parametros_ir(db, ano)
+        imposto = (
+            imposto_no_periodo(
+                reservas, despesas, ini_mes, fim_mes,
+                parametros_ir_para_dominio(params_orm),
+            )
+            if params_orm is not None
+            else Decimal("0")
+        )
+        m = calcular_metricas(
+            reservas, despesas, ini_mes, fim_mes, num, imposto_estimado=imposto
+        )
+        out = MetricasOut.from_dataclass(m)
+        serie.append(
+            MetricaMensalOut(
+                ano=ano,
+                mes=mes,
+                rotulo=f"{mes:02d}/{ano}",
+                noites_reservadas=out.noites_reservadas,
+                receita_diarias=out.receita_diarias,
+                receita_liquida_recebida=out.receita_liquida_recebida,
+                despesas_totais=out.despesas_totais,
+                imposto_estimado=out.imposto_estimado,
+                ocupacao=out.ocupacao,
+            )
+        )
+        ano, mes = (ano + 1, 1) if mes == 12 else (ano, mes + 1)
+
+    return serie
 
 
 @router.get("/por-apartamento", response_model=list[MetricasApartamentoOut])

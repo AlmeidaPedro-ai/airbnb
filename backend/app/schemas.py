@@ -239,6 +239,20 @@ class MetricasOut(BaseModel):
         )
 
 
+class MetricaMensalOut(BaseModel):
+    """Um mês da série temporal (para gráficos receita × despesas)."""
+
+    ano: int
+    mes: int
+    rotulo: str  # ex.: "01/2026"
+    noites_reservadas: int
+    receita_diarias: float
+    receita_liquida_recebida: float
+    despesas_totais: float
+    imposto_estimado: float
+    ocupacao: float
+
+
 class MetricasApartamentoOut(BaseModel):
     apartamento_id: int
     nome: str
@@ -298,6 +312,13 @@ class LinhaImpostoOut(BaseModel):
             isento=l.isento,
             imposto_devido=_q2(l.imposto_devido),
         )
+
+
+class ImpostoCalcularRequest(BaseModel):
+    """Recalcula a grade com 'outras rendas' por mês (1..12)."""
+
+    ano: int
+    outras_rendas: dict[int, Decimal] = Field(default_factory=dict)
 
 
 class GradeImpostoOut(BaseModel):

@@ -5,14 +5,15 @@ Aplicação para gerenciar a locação de temporada de 2–3 apartamentos: métr
 despesas por categoria, lucro) e **tributárias** (estimativa de IR via
 Carnê-Leão), por apartamento e por período.
 
-> **Estado atual: Fase 2 (API REST) concluída.** Backend com modelos,
-> migrações, seed, lógica de cálculo 100% testada **e API REST com autenticação
-> JWT + OpenAPI**. Frontend, importação/exportação e deploy chegam nas fases
-> seguintes.
+> **Estado atual: Fase 3 (Frontend) concluída.** Backend completo (modelos,
+> migrações, seed, cálculo testado, API REST + JWT) **e frontend React + Vite +
+> TypeScript com dashboard, gráficos (Recharts) e CRUDs**. Importação/exportação
+> CSV e deploy chegam nas fases seguintes.
 
 ## Stack
 
 - **Backend:** Python 3.12 (compatível 3.11) · FastAPI · SQLAlchemy 2.0 · Pydantic v2
+- **Frontend:** React 18 · Vite · TypeScript · Recharts
 - **Banco:** PostgreSQL · migrações com Alembic
 - **Locale:** pt-BR · moeda R$ · datas `dd/mm/yyyy` · fuso `America/Sao_Paulo`
 
@@ -51,8 +52,33 @@ backend/
       adapters.py        # ORM -> domínio
   alembic/               # migrações
   tests/                 # pytest (cálculo + integração da API)
+frontend/
+  src/
+    api/                 # client HTTP (JWT) + tipos TS
+    auth/                # contexto de autenticação
+    components/          # Layout, Modal, hooks
+    pages/               # Login, Dashboard, Reservas, Despesas,
+                         #   Apartamentos, Imposto, ParametrosIR
+    utils/format.ts      # formatação pt-BR (R$, datas, %)
 docker-compose.yml       # Postgres local
 ```
+
+## Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev      # http://localhost:5173 (proxy /api -> backend :8000)
+npm run build    # type-check (tsc) + bundle de produção em dist/
+```
+
+Telas: **Dashboard** (filtros de apê/período com atalhos, 12 KPIs, gráficos de
+ocupação, receita × despesas por mês e despesas por categoria, resumo por
+apartamento), **Reservas/Despesas/Apartamentos** (CRUD com avisos de
+capacidade/sobreposição), **Imposto** (grade mensal com "outras rendas"
+editáveis e recálculo) e **Parâmetros IR** (edição de faixas e isenção).
+
+> Login com as credenciais de seed (abaixo). O backend precisa estar rodando.
 
 ## API REST
 
@@ -155,6 +181,6 @@ o default.
 
 - [x] **Fase 1 — Esqueleto:** modelos, migrações, seed, cálculo + testes.
 - [x] **Fase 2 — API:** endpoints REST, autenticação JWT, OpenAPI.
-- [ ] **Fase 3 — Frontend:** dashboard, gráficos, CRUDs.
+- [x] **Fase 3 — Frontend:** dashboard, gráficos, CRUDs.
 - [ ] **Fase 4 — Importação/Exportação CSV.**
 - [ ] **Fase 5 — Deploy Railway:** Dockerfile, env, migrações no start.
