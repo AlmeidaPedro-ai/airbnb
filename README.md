@@ -5,9 +5,10 @@ Aplicação para gerenciar a locação de temporada de 2–3 apartamentos: métr
 despesas por categoria, lucro) e **tributárias** (estimativa de IR via
 Carnê-Leão), por apartamento e por período.
 
-> **Estado atual: Fase 1 (Esqueleto) concluída.** Backend com modelos,
-> migrações, seed e a lógica de cálculo isolada e 100% testada. API REST,
-> frontend, importação/exportação e deploy chegam nas fases seguintes.
+> **Estado atual: Fase 2 (API REST) concluída.** Backend com modelos,
+> migrações, seed, lógica de cálculo 100% testada **e API REST com autenticação
+> JWT + OpenAPI**. Frontend, importação/exportação e deploy chegam nas fases
+> seguintes.
 
 ## Stack
 
@@ -36,16 +37,51 @@ backend/
     models.py            # modelos SQLAlchemy (NUMERIC(12,2) p/ dinheiro)
     seed_data.py         # dataset canônico da seção 11 (fonte única)
     seed.py              # popula o banco (idempotente)
-    main.py              # FastAPI (Fase 1: só /api/health)
+    security.py          # hash bcrypt + JWT
+    deps.py              # dependências (sessão, usuário autenticado)
+    business.py          # regras que tocam o banco (sobreposição, etc.)
+    schemas.py           # schemas Pydantic v2 (entrada/saída)
+    main.py              # FastAPI: health + routers
+    routers/             # auth, apartamentos, reservas, despesas,
+                         #   metricas, imposto, parametros_ir
     services/
       domain.py          # dataclasses puras de domínio
       metrics.py         # KPIs operacionais/financeiros (puro)
       tax.py             # Carnê-Leão (puro)
       adapters.py        # ORM -> domínio
   alembic/               # migrações
-  tests/                 # pytest (paridade com a planilha validada)
+  tests/                 # pytest (cálculo + integração da API)
 docker-compose.yml       # Postgres local
 ```
+
+## API REST
+
+Documentação interativa (OpenAPI) em **`/docs`** com o servidor no ar. Todas as
+rotas exigem JWT (`Authorization: Bearer <token>`), exceto `POST /api/auth/login`
+e `GET /api/health`.
+
+| Método | Rota | Descrição |
+|---|---|---|
+| POST | `/api/auth/login` | Login (email/senha) → access_token |
+| GET | `/api/auth/me` | Usuário autenticado |
+| GET/POST | `/api/apartamentos` | Listar/criar |
+| GET/PUT/DELETE | `/api/apartamentos/{id}` | Obter/editar/excluir |
+| GET/POST | `/api/reservas` | Listar (filtros `apartamento_id`,`inicio`,`fim`)/criar |
+| GET/PUT/DELETE | `/api/reservas/{id}` | Obter/editar/excluir |
+| GET/POST | `/api/despesas` | Listar (filtros apê/categoria/período)/criar |
+| GET/PUT/DELETE | `/api/despesas/{id}` | Obter/editar/excluir |
+| GET | `/api/metricas` | KPIs (`apartamento_id`,`inicio`,`fim`) |
+| GET | `/api/metricas/por-apartamento` | KPIs por apê (`inicio`,`fim`) |
+| GET | `/api/imposto?ano=` | Grade mensal + total anual |
+| GET/PUT | `/api/parametros-ir` | Ler/editar faixas e isenção |
+
+**Credenciais de seed (dev):** email `1994.pedro@gmail.com`, senha `admin123`
+(configuráveis via `SEED_USER_EMAIL` / `SEED_USER_PASSWORD` antes do seed).
+Troque em produção.
+
+**Regras de negócio nas reservas:** `check_out > check_in` é bloqueante (422);
+capacidade excedida e sobreposição de datas geram **avisos não bloqueantes** no
+campo `avisos` da resposta de criação/edição.
 
 ## Execução local
 
@@ -118,7 +154,7 @@ o default.
 ## Roadmap
 
 - [x] **Fase 1 — Esqueleto:** modelos, migrações, seed, cálculo + testes.
-- [ ] **Fase 2 — API:** endpoints REST, autenticação JWT, OpenAPI.
+- [x] **Fase 2 — API:** endpoints REST, autenticação JWT, OpenAPI.
 - [ ] **Fase 3 — Frontend:** dashboard, gráficos, CRUDs.
 - [ ] **Fase 4 — Importação/Exportação CSV.**
 - [ ] **Fase 5 — Deploy Railway:** Dockerfile, env, migrações no start.

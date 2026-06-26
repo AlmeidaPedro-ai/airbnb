@@ -8,6 +8,9 @@ requires-python = ">=3.11"
 testpaths = ["tests"]
 pythonpath = ["."]
 addopts = "-q"
+markers = [
+    "api: testes de integração que exigem banco (DATABASE_URL).",
+]
 
 [tool.ruff]
 line-length = 100

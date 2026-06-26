@@ -5,6 +5,8 @@ Uso: ``python -m app.seed``
 """
 from __future__ import annotations
 
+import os
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -56,8 +58,11 @@ def _seed_parametros_ir(db: Session) -> None:
 def _seed_usuario(db: Session) -> None:
     if db.scalar(select(Usuario).limit(1)):
         return
-    # Hash gerado na Fase 2 (auth). Por ora, placeholder inválido para login.
-    db.add(Usuario(email="1994.pedro@gmail.com", senha_hash="!", ativo=True))
+    from app.security import hash_senha
+
+    email = os.getenv("SEED_USER_EMAIL", "1994.pedro@gmail.com")
+    senha = os.getenv("SEED_USER_PASSWORD", "admin123")
+    db.add(Usuario(email=email, senha_hash=hash_senha(senha), ativo=True))
 
 
 def seed(db: Session) -> dict[str, int]:
